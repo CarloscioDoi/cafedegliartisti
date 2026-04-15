@@ -186,7 +186,7 @@ const DB = {
           job: profile.job,
           years: profile.years,
           bio: profile.bio,
-          approved: false
+          approved: true
         });
       }
       return { success: true };
@@ -894,15 +894,10 @@ const PageMuro = ({ user, userProfile, onOpenAuth }) => {
             <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 28, color: '#0D3A6E', margin: '0 0 6px' }}>🖼️ Muro dei Ricordi</h2>
             <p style={{ color: '#777', fontSize: 15, margin: 0 }}>Le storie di chi c'era. Ogni parola — un pezzo di storia condivisa.</p>
           </div>
-          {user && (userProfile?.approved || user.email === ADMIN_EMAIL) && (
+          {user && (
             <button onClick={() => setShowAddModal(true)} style={{ background: 'linear-gradient(135deg, #C8A000, #1B64C8)', color: '#fff', border: 'none', borderRadius: '50px', padding: '10px 22px', fontSize: 14, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               + Aggiungi ricordo
             </button>
-          )}
-          {user && !userProfile?.approved && (
-            <div style={{ background: '#EEF4FF', border: '1px solid #C8A00044', borderRadius: '10px', padding: '8px 14px', fontSize: 13, color: '#1A4A8A' }}>
-              ⏳ In attesa di approvazione
-            </div>
           )}
           {!user && (
             <button onClick={() => onOpenAuth('register')} style={{ background: '#F5F9FF', color: '#0D3A6E', border: '2px solid #C8A000', borderRadius: '50px', padding: '10px 22px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
@@ -1343,7 +1338,7 @@ function App() {
 
   const handleAuthSuccess = (type) => {
     if (type === 'register') {
-      setSuccessMsg('🎉 Registrazione inviata! Carlo ti approverà presto.');
+      setSuccessMsg('🎉 Benvenuto nella Family! Sei dentro.');
     } else {
       setSuccessMsg('☕ Bentornato nella Family!');
     }
