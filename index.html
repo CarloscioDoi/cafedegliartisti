@@ -997,17 +997,19 @@ const PageMuro = ({ user, userProfile, onOpenAuth }) => {
 
 // ─── PAGE: MAPPA ──────────────────────────────────────────────────────────────
 const PageMappa = ({ onOpenAuth, user }) => {
-  const [members, setMembers] = useState([]);
+  const [allMembers, setAllMembers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       const data = await DB.getMembers();
-      setMembers(data.filter(m => m.lat && m.lng));
+      setAllMembers(data);
       setLoading(false);
     })();
   }, []);
 
+  const members = allMembers.filter(m => m.lat && m.lng);
+  const membersNoLocation = allMembers.filter(m => !m.lat || !m.lng);
   const countries = [...new Set(members.map(m => m.country).filter(Boolean))].sort();
 
   return (
@@ -1036,22 +1038,47 @@ const PageMappa = ({ onOpenAuth, user }) => {
             </div>
           )}
 
-          <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: '#0D3A6E', margin: '24px 0 14px' }}>Chi si è messo sulla mappa</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-            {members.map(m => (
-              <div key={m.id} style={{ background: '#fff', border: '1px solid #DDE8F5', borderRadius: '16px', padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <Avatar emoji={m.emoji} size={40} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1A1A1A' }}>{m.name}</div>
-                    <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>📍 {m.city}{m.country && m.city ? ', ' : ''}{m.country}</div>
-                    {m.job && <div style={{ fontSize: 12, color: '#555', marginTop: 1 }}>💼 {m.job}</div>}
-                    {m.years && <div style={{ fontSize: 11, color: '#C8A000', marginTop: 3, fontWeight: 500 }}>☕ Al Cafè: {m.years}</div>}
+          {members.length > 0 && (
+            <>
+              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 20, color: '#0D3A6E', margin: '24px 0 14px' }}>📍 Sulla mappa ({members.length})</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+                {members.map(m => (
+                  <div key={m.id} style={{ background: '#fff', border: '1px solid #DDE8F5', borderRadius: '16px', padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                      <Avatar emoji={m.emoji} size={40} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: '#1A1A1A' }}>{m.name}</div>
+                        <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>📍 {m.city}{m.country && m.city ? ', ' : ''}{m.country}</div>
+                        {m.job && <div style={{ fontSize: 12, color: '#555', marginTop: 1 }}>💼 {m.job}</div>}
+                        {m.years && <div style={{ fontSize: 11, color: '#C8A000', marginTop: 3, fontWeight: 500 }}>☕ Al Cafè: {m.years}</div>}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
+
+          {membersNoLocation.length > 0 && (
+            <>
+              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: '#888', margin: '28px 0 10px' }}>🗺️ Iscritti · posizione non ancora aggiunta ({membersNoLocation.length})</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
+                {membersNoLocation.map(m => (
+                  <div key={m.id} style={{ background: '#FAFBFF', border: '1px dashed #C5D5EE', borderRadius: '16px', padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <Avatar emoji={m.emoji} size={36} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: '#555' }}>{m.name}</div>
+                        {(m.city || m.country) && <div style={{ fontSize: 12, color: '#aaa', marginTop: 1 }}>{m.city}{m.country && m.city ? ', ' : ''}{m.country}</div>}
+                        {m.job && <div style={{ fontSize: 12, color: '#aaa', marginTop: 1 }}>💼 {m.job}</div>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {user && <p style={{ fontSize: 13, color: '#999', marginTop: 10, fontStyle: 'italic' }}>💡 Per aggiungere la tua posizione clicca sul tuo nome in alto a destra → ✏️ Modifica profilo → 📍 Usa la mia posizione attuale</p>}
+            </>
+          )}
 
           {!user && (
             <div style={{ background: '#EEF4FF', borderRadius: '16px', padding: '20px 24px', marginTop: 24, textAlign: 'center', border: '1px solid #C8A00044' }}>
@@ -1134,7 +1161,7 @@ const PageFamily = ({ onOpenAuth, user }) => {
 };
 
 // ─── PAGE: ADMIN ──────────────────────────────────────────────────────────────
-const PageAdmin = () => {
+const PageAdmin = ({ onApproval }) => {
   const [tab, setTab] = useState('utenti');
   const [pendingUsers, setPendingUsers] = useState([]);
   const [pendingMems, setPendingMems] = useState([]);
@@ -1158,6 +1185,7 @@ const PageAdmin = () => {
     if (res.error) { flash('Errore: ' + res.error); return; }
     flash(approve ? '✅ Utente approvato!' : '🗑️ Profilo rimosso.');
     setPendingUsers(prev => prev.filter(u => u.id !== userId));
+    if (onApproval) onApproval();
   };
 
   const handleMem = async (memId, approve) => {
@@ -1266,6 +1294,15 @@ function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const loadPendingCount = async () => {
+    if (!sb) return;
+    try {
+      const pending = await DB.getPendingProfiles();
+      setPendingCount(pending.length);
+    } catch(_) {}
+  };
 
   const autoApproveAdmin = async (u) => {
     if (!u || !sb || u.email !== ADMIN_EMAIL) return;
@@ -1281,6 +1318,7 @@ function App() {
         await autoApproveAdmin(u);
         const profile = await DB.getUserProfile(u.id);
         setUserProfile(profile);
+        if (u.email === ADMIN_EMAIL) loadPendingCount();
       }
     })();
 
@@ -1293,8 +1331,10 @@ function App() {
           await autoApproveAdmin(u);
           const profile = await DB.getUserProfile(u.id);
           setUserProfile(profile);
+          if (u.email === ADMIN_EMAIL) loadPendingCount();
         } else {
           setUserProfile(null);
+          setPendingCount(0);
         }
       });
       return () => subscription.unsubscribe();
@@ -1324,7 +1364,7 @@ function App() {
     { id: 'muro', label: 'Ricordi', icon: '🖼️' },
     { id: 'mappa', label: 'Mappa', icon: '🌍' },
     { id: 'family', label: 'Family', icon: '👥' },
-    ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: '🔑' }] : []),
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: '🔑', badge: pendingCount }] : []),
   ];
 
   const renderPage = () => {
@@ -1334,7 +1374,7 @@ function App() {
       case 'muro': return <PageMuro {...props} />;
       case 'mappa': return <PageMappa {...props} />;
       case 'family': return <PageFamily {...props} />;
-      case 'admin': return isAdmin ? <PageAdmin /> : <PageHome {...props} />;
+      case 'admin': return isAdmin ? <PageAdmin onApproval={() => loadPendingCount()} /> : <PageHome {...props} />;
       default: return <PageHome {...props} />;
     }
   };
@@ -1363,8 +1403,9 @@ function App() {
 
           <div className="desktop-nav" style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             {navItems.map(item => (
-              <button key={item.id} onClick={() => setPage(item.id)} style={{ background: page === item.id ? '#EEF4FF' : 'none', color: page === item.id ? '#0D3A6E' : '#777', border: 'none', borderRadius: '50px', padding: '8px 14px', fontSize: 14, fontWeight: page === item.id ? 700 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.2s' }}>
+              <button key={item.id} onClick={() => setPage(item.id)} style={{ background: page === item.id ? '#EEF4FF' : 'none', color: page === item.id ? '#0D3A6E' : '#777', border: 'none', borderRadius: '50px', padding: '8px 14px', fontSize: 14, fontWeight: page === item.id ? 700 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.2s', position: 'relative' }}>
                 {item.icon} {item.label}
+                {item.badge > 0 && <span style={{ background: '#E53E3E', color: '#fff', borderRadius: '50%', fontSize: 11, fontWeight: 800, minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginLeft: 2 }}>{item.badge}</span>}
               </button>
             ))}
 
@@ -1401,6 +1442,7 @@ function App() {
             {navItems.map(item => (
               <button key={item.id} onClick={() => { setPage(item.id); setMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '12px 24px', background: page === item.id ? '#EEF4FF' : 'none', border: 'none', color: page === item.id ? '#0D3A6E' : '#555', fontSize: 15, fontWeight: page === item.id ? 700 : 500, cursor: 'pointer', textAlign: 'left' }}>
                 {item.icon} {item.label}
+                {item.badge > 0 && <span style={{ background: '#E53E3E', color: '#fff', borderRadius: '50%', fontSize: 11, fontWeight: 800, minWidth: 18, height: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{item.badge}</span>}
               </button>
             ))}
             <div style={{ padding: '12px 24px', borderTop: '1px solid #C5D5EE', marginTop: 8, display: 'flex', gap: 10 }}>
