@@ -176,21 +176,54 @@ const DB = {
     try {
       const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: 'https://carlosciodoi.github.io/cafedegliartisti/' } });
       if (error) throw error;
-      if (data.user) {
-        await sb.from('profiles').insert({
-          id: data.user.id,
-          name: profile.name,
-          emoji: profile.emoji,
-          city: profile.city,
-          country: profile.country,
-          job: profile.job,
-          years: profile.years,
-          bio: profile.bio,
-          approved: true
-        });
+
+      // Salva i dati del profilo in localStorage — verranno scritti nel DB
+      // al momento della conferma email (quando la sessione sarà attiva)
+      localStorage.setItem('pending_profile', JSON.stringify(profile));
+
+      if (data.user && data.session) {
+        // Email confirmation disabilitata: sessione attiva subito → scrivi il profilo ora
+        await this._createProfile(data.user.id, profile);
+        localStorage.removeItem('pending_profile');
+        return { success: true, immediate: true };
       }
-      return { success: true };
+
+      // Email confirmation abilitata: l'utente deve cliccare il link nell'email
+      return { success: true, needsConfirmation: true };
     } catch(e) { return { error: e.message }; }
+  },
+
+  async _createProfile(userId, profile) {
+    try {
+      const { error } = await sb.from('profiles').insert({
+        id: userId,
+        name: profile.name,
+        emoji: profile.emoji || '😊',
+        city: profile.city,
+        country: profile.country,
+        job: profile.job,
+        years: profile.years,
+        bio: profile.bio,
+        approved: true
+      });
+      return !error;
+    } catch(_) { return false; }
+  },
+
+  async ensureProfile(userId) {
+    // Chiamato dopo il login/conferma email: crea il profilo se manca
+    if (!sb || !userId) return;
+    try {
+      const { data } = await sb.from('profiles').select('id').eq('id', userId).single();
+      if (data) return; // profilo già esiste
+      // Controlla se ci sono dati in sospeso da registrazione
+      const pending = localStorage.getItem('pending_profile');
+      if (pending) {
+        const profile = JSON.parse(pending);
+        await this._createProfile(userId, profile);
+        localStorage.removeItem('pending_profile');
+      }
+    } catch(_) {}
   },
 
   async login(email, password) {
@@ -482,7 +515,10 @@ const AuthModal = ({ mode, onClose, onSuccess }) => {
     });
     setLoading(false);
     if (res.error) setError(res.error);
-    else { onSuccess('register'); onClose(); }
+    else if (res.needsConfirmation) {
+      onSuccess('confirm');
+      onClose();
+    } else { onSuccess('register'); onClose(); }
   };
 
   const inputStyle = { width: '100%', padding: '11px 14px', borderRadius: '10px', border: '2px solid #C5D5EE', fontSize: '15px', outline: 'none', background: '#F5F9FF', boxSizing: 'border-box' };
@@ -1311,6 +1347,7 @@ function App() {
       setUser(u);
       if (u) {
         await autoApproveAdmin(u);
+        await DB.ensureProfile(u.id);
         const profile = await DB.getUserProfile(u.id);
         setUserProfile(profile);
         if (u.email === ADMIN_EMAIL) loadPendingCount();
@@ -1324,6 +1361,8 @@ function App() {
         setUser(u);
         if (u) {
           await autoApproveAdmin(u);
+          // Se è la prima volta che si autentica (conferma email), crea il profilo
+          await DB.ensureProfile(u.id);
           const profile = await DB.getUserProfile(u.id);
           setUserProfile(profile);
           if (u.email === ADMIN_EMAIL) loadPendingCount();
@@ -1337,12 +1376,16 @@ function App() {
   }, []);
 
   const handleAuthSuccess = (type) => {
-    if (type === 'register') {
+    if (type === 'confirm') {
+      setSuccessMsg('📧 Controlla la tua email e clicca il link di conferma per entrare!');
+      setTimeout(() => setSuccessMsg(''), 8000);
+    } else if (type === 'register') {
       setSuccessMsg('🎉 Benvenuto nella Family! Sei dentro.');
+      setTimeout(() => setSuccessMsg(''), 4000);
     } else {
       setSuccessMsg('☕ Bentornato nella Family!');
+      setTimeout(() => setSuccessMsg(''), 4000);
     }
-    setTimeout(() => setSuccessMsg(''), 4000);
   };
 
   const handleLogout = async () => {
